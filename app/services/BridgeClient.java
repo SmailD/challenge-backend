@@ -26,7 +26,7 @@ public class BridgeClient {
     private final String apiClientSecret;
 
     // these are hardcoded for simplicity's sake
-    private static final String USER_EMAIL = "user1@mail.com";
+    private static final String USER_EMAIL = "user5@mail.com";
     private static final String USER_PASSWORD = "a!Strongp#assword1";
 
     @Inject
@@ -62,20 +62,21 @@ public class BridgeClient {
 
     public double doSomething() {
         Optional<AuthenticateResponse> maybeAccessToken = authenticateUser(USER_EMAIL, USER_PASSWORD);
+        if(maybeAccessToken.isPresent()) {
+            return wsClient.url(baseUrl + "")
+                    .addHeader("Bankin-Version", apiVersion)
+                    .addHeader("Authorization", "Bearer " + maybeAccessToken.get().accessToken)
+                    .addQueryParameter("client_id", apiClientId)
+                    .addQueryParameter("client_secret", apiClientSecret)
+                    .get()
+                    .thenApply(response -> {
+                        GetAccountsResponse getAccountsResponse = Json.fromJson(response.asJson(), GetAccountsResponse.class);
 
-        wsClient.url(baseUrl + "")
-                .addHeader("Bankin-Version", apiVersion)
-                .addHeader("Authorization", "Bearer ")
-                .addQueryParameter("myparam", "myvalue")
-                .get()
-                .thenApply(response -> {
-                    GetAccountsResponse getAccountsResponse = Json.fromJson(response.asJson(), GetAccountsResponse.class);
-
-                    return 0d;
-                })
-                .toCompletableFuture()
-                .join();
-
+                        return 0d;
+                    })
+                    .toCompletableFuture()
+                    .join();
+        }
         return 0d;
     }
 }
