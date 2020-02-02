@@ -1,6 +1,7 @@
 package services;
 
 import com.typesafe.config.Config;
+import models.AccountType;
 import models.AuthenticateResponse;
 import models.GetAccountsResponse;
 import play.libs.Json;
@@ -63,7 +64,7 @@ public class BridgeClient {
     public double doSomething() {
         Optional<AuthenticateResponse> maybeAccessToken = authenticateUser(USER_EMAIL, USER_PASSWORD);
         if(maybeAccessToken.isPresent()) {
-            return wsClient.url(baseUrl + "")
+            return wsClient.url(baseUrl + "/accounts")
                     .addHeader("Bankin-Version", apiVersion)
                     .addHeader("Authorization", "Bearer " + maybeAccessToken.get().accessToken)
                     .addQueryParameter("client_id", apiClientId)
@@ -71,8 +72,7 @@ public class BridgeClient {
                     .get()
                     .thenApply(response -> {
                         GetAccountsResponse getAccountsResponse = Json.fromJson(response.asJson(), GetAccountsResponse.class);
-
-                        return 0d;
+                        return getAccountsResponse.totalAmountByType(AccountType.CHECKING, AccountType.SAVINGS);
                     })
                     .toCompletableFuture()
                     .join();
