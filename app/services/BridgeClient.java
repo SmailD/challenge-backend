@@ -1,5 +1,6 @@
 package services;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import com.typesafe.config.Config;
 import models.AccountType;
 import models.AuthenticateResponse;
@@ -9,7 +10,10 @@ import play.libs.ws.WSClient;
 
 import javax.inject.Inject;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static play.mvc.Http.Status.OK;
 
@@ -67,16 +71,55 @@ public class BridgeClient {
             return wsClient.url(baseUrl + "/accounts")
                     .addHeader("Bankin-Version", apiVersion)
                     .addHeader("Authorization", "Bearer " + maybeAccessToken.get().accessToken)
+                    .addQueryParameter("limit", "1")
                     .addQueryParameter("client_id", apiClientId)
                     .addQueryParameter("client_secret", apiClientSecret)
                     .get()
                     .thenApply(response -> {
-                        GetAccountsResponse getAccountsResponse = Json.fromJson(response.asJson(), GetAccountsResponse.class);
-                        return getAccountsResponse.totalAmountByType(AccountType.CHECKING, AccountType.SAVINGS);
+                        GetAccountsResponse getAccountswResponse = Json.fromJson(response.asJson(), GetAccountsResponse.class);
+                        return getAccountswResponse.totalAmountByType(AccountType.CHECKING, AccountType.SAVINGS);
                     })
                     .toCompletableFuture()
                     .join();
         }
         return 0d;
     }
+
+
+    public double totalAmountOfSavingsAndCheckingAccount(){
+        Optional<AuthenticateResponse> maybeAccessToken = authenticateUser(USER_EMAIL, USER_PASSWORD);
+
+        List<GetAccountsResponse> listOfAccountsResponses = new ArrayList<>();
+        AtomicReference<String> next_uri = new AtomicReference<>("/accounts");
+        AtomicDouble value = new AtomicDouble(0d);
+
+        maybeAccessToken.ifPresent(authenticateResponse -> {
+            do {
+                GetAccountsResponse response = getAccountsRequest(authenticateResponse.accessToken, next_uri.get());
+                listOfAccountsResponses.add(response);
+                next_uri.set(response.pagination.get("next_uri"));
+            } while (next_uri.get() != null);
+
+            double result = listOfAccountsResponses.stream()
+                    .mapToDouble(ar -> ar.totalAmountByType(AccountType.CHECKING, AccountType.SAVINGS))
+                    .sum();
+            value.set(result);
+
+        });
+        return value.get();
+    }
+
+    private GetAccountsResponse getAccountsRequest(String accessToken, String uri) {
+        String _uri = uri == null ? "/accounts" : uri;
+        return wsClient.url(baseUrl + _uri)
+                .addHeader("Bankin-Version", apiVersion)
+                .addHeader("Authorization", "Bearer " + accessToken)
+                .addQueryParameter("client_id", apiClientId)
+                .addQueryParameter("client_secret", apiClientSecret)
+                .get()
+                .thenApply(response -> Json.fromJson(response.asJson(), GetAccountsResponse.class))
+                .toCompletableFuture()
+                .join();
+    }
+
 }

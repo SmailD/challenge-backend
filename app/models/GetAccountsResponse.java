@@ -3,6 +3,7 @@ package models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -10,6 +11,9 @@ public class GetAccountsResponse {
 
     @JsonProperty("resources")
     public List<Account> accounts;
+
+    @JsonProperty("pagination")
+    public Map<String, String> pagination;
 
     public double totalAmountByType(AccountType... params){
         Predicate<Account> predicates = createAccountTypePredicatesOf(params);
