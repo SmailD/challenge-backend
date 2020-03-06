@@ -24,6 +24,6 @@ public class MyController extends Controller {
     }
 
     public Result myMethod() {
-        return ok(Json.toJson(new RoundedSum(bridgeClient.doSomething())));
+        return ok(Json.toJson(new RoundedSum(bridgeClient.totalAmountOfSavingsAndCheckingAccount())));
     }
 }
